@@ -1,89 +1,217 @@
-# Kineshia Robotics — ROS 2 Manipulator Take-Home (Starter Repo)
+# Kineshia Robotics — 3-DoF Planar Arm ROS 2 System
 
-Welcome, and thanks for taking the time. This repo is your starting point for
-the **Robotics Software Engineer (ROS 2 & GUI Systems)** take-home task. The
-full brief (what to build, how you're evaluated, how to submit) is in the
-separate task document you were sent. This README covers setup only.
+A compact ROS 2 implementation of a 3-DoF planar robotic arm with Cartesian target control, inverse kinematics, smooth joint-space trajectory generation, safety validation, live PyQt5/PyQtGraph telemetry, and a pick-and-place demonstration.
 
----
+## System Overview
 
-## What's in here
+The system contains two ROS 2 nodes:
 
-```
+```text
+Operator
+   |
+   v
+PyQt5 / PyQtGraph GUI
+   |
+   | /target_pose
+   v
+Controller Node
+   |
+   +-- Reachability
+   +-- Inverse Kinematics
+   +-- Safety Validation
+   +-- Quintic Trajectory
+   |
+   | /joint_states
+   v
+GUI Telemetry
+Arm Model
+
+The provided PlanarArm implementation is used as the kinematics and constraint library and was not modified.
+
+Property	Value
+Link lengths	3.0, 2.0, 1.5 m
+J1 limit	0° to 180°
+J2 limit	-120° to 120°
+J3 limit	-120° to 120°
+Ground constraint	y >= 0
+Maximum radial reach	6.5 m
+Controller
+
+The controller:
+
+Receives Cartesian targets through /target_pose.
+Checks workspace reachability.
+Projects unreachable targets to the closest reachable boundary.
+Solves inverse kinematics.
+Validates joint limits and the ground constraint.
+Generates a smooth fifth-order joint trajectory.
+Publishes sensor_msgs/JointState at 50 Hz.
+Publishes controller status for GUI feedback.
+
+The quintic trajectory uses:
+
+s(t) = 10t^3 - 15t^4 + 6t^5
+Operator GUI
+
+The GUI provides:
+
+Live 2D arm visualization
+Workspace boundary and ground constraint
+End-effector position
+Joint telemetry
+Joint-angle history
+Cartesian target input
+Editable PICK target
+Editable PLACE target
+Required (7.0, 3.0) edge-case command
+Pick-and-place sequence control
+Controller and planning status
+
+The Qt event loop remains responsive while ROS 2 callbacks are serviced without blocking the GUI.
+
+Pick-and-Place
+
+The operator can configure PICK and PLACE Cartesian targets directly from the mission controls.
+
+Default demonstration targets:
+
+PICK  = (4.0, 2.0)
+PLACE = (-3.0, 3.0)
+
+Sequence:
+
+PICK target
+    |
+    v
+Move
+    |
+    v
+PICK action
+    |
+    v
+PLACE target
+    |
+    v
+Move
+    |
+    v
+Complete
+Edge Case
+
+The required test target is:
+
+(7.0, 3.0)
+
+This is outside the nominal 6.5 m radial workspace. The controller projects it to the closest reachable target and reports the projected condition to the operator.
+
+ROS 2 Interfaces
+Subscribed
+
+/target_pose — geometry_msgs/PointStamped
+
+Published
+
+/joint_states — sensor_msgs/JointState
+
+/controller_status — std_msgs/String
+
+Package Structure
 kineshia_ros2_arm_task/
-├── README.md                         <- you are here (setup only)
+├── README.md
+├── DESIGN_NOTE.md
+├── PART2_SIM_TO_REAL.md
 └── src/
-    └── planar_arm_control/           <- an ament_python package to build on
+    └── planar_arm_control/
         ├── package.xml
         ├── setup.py
         ├── setup.cfg
-        ├── resource/planar_arm_control
+        ├── resource/
+        │   └── planar_arm_control
         ├── launch/
-        │   └── bringup.launch.py      <- STUB: launch controller + GUI
+        │   └── bringup.launch.py
         └── planar_arm_control/
-            ├── planar_arm.py          <- PROVIDED kinematics. DO NOT MODIFY.
-            ├── controller_node.py     <- STUB: your controller
-            └── gui_node.py            <- STUB: your PyQt5/PyQtGraph GUI
-```
+            ├── __init__.py
+            ├── planar_arm.py
+            ├── controller_node.py
+            └── gui_node.py
 
-**`planar_arm.py` is given to you fully working** — forward kinematics,
-multiple-solution analytical inverse kinematics (with a damped-Jacobian
-fallback), joint limits, and a ground constraint. Treat it as a black-box
-library and build around it. Please don't modify it; if you think it has a
-bug, note it in your write-up instead.
+planar_arm.py is the provided kinematics implementation and was kept unchanged.
 
-The three other files are **stubs** with `TODO`s describing the interface we
-suggest. You implement them.
+Requirements
+Ubuntu
+ROS 2 Jazzy
+Python 3
+NumPy
+PyQt5
+PyQtGraph
 
----
+Install GUI dependencies if required:
 
-## The arm
-
-A 3-DoF planar (2D) revolute arm.
-
-| Property        | Value                                  |
-|-----------------|----------------------------------------|
-| Link lengths    | `[3.0, 2.0, 1.5]`                      |
-| Joint 1 limits  | `0°` to `180°`                         |
-| Joint 2 limits  | `-120°` to `120°`                      |
-| Joint 3 limits  | `-120°` to `120°`                      |
-| Constraint      | no part of the arm may go below `y = 0`|
-
-Quick sanity check of the provided library:
-
-```bash
-python3 src/planar_arm_control/planar_arm_control/planar_arm.py
-```
-
----
-
-## Environment
-
-- **ROS 2 Jazzy** (preferred) or **Humble** on **Ubuntu**.
-- Python 3, `numpy`.
-- GUI dependencies: `PyQt5` and `pyqtgraph`
-  ```bash
-  pip install PyQt5 pyqtgraph        # or: sudo apt install python3-pyqt5 python3-pyqtgraph
-  ```
-
-## Build & run
-
-```bash
-# from the repo root (this is your colcon workspace root)
-colcon build
+sudo apt install python3-pyqt5 python3-pyqtgraph
+Build
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install
 source install/setup.bash
-
-# once you've implemented the nodes:
+Run
 ros2 launch planar_arm_control bringup.launch.py
-```
 
----
+This launches both the controller and GUI nodes.
 
-## What to do next
+Design Decisions
 
-Open the **task brief** for the full requirements, the core vs. stretch split,
-the deliverables (repo + design note + short demo recording), and the timeline.
-If anything is unclear, email **hr@kineshia.in** — reasonable questions are
-welcome and won't count against you.
+A quintic joint-space trajectory was selected because it provides smooth endpoint velocity and acceleration while remaining lightweight.
 
-Good luck — we're excited to see how you architect it.
+Individual Cartesian target commands use a ROS 2 topic. A ROS 2 Action would be a natural next step for production pick-and-place because it would provide explicit goal feedback, cancellation, and completion semantics.
+
+The current planning and safety responsibilities are logically separated while remaining lightweight within the controller implementation. A future production architecture can formalize these as separate planner, safety, and hardware-backend interfaces.
+
+Sim-to-Real
+
+The current system models actuator output through simulated joint-state publication.
+
+For physical deployment, the final output stage can be replaced with a hardware interface while retaining the Cartesian planning and IK logic.
+
+Important real-hardware additions include:
+
+Encoder feedback
+Calibration and zero-offset handling
+Velocity and acceleration limits
+Current/torque limits
+Closed-loop trajectory tracking
+Communication watchdogs
+Emergency-stop handling
+Fault recovery
+Timestamped feedback
+Latency and jitter monitoring
+
+See PART2_SIM_TO_REAL.md for the detailed discussion.
+
+Documentation
+DESIGN_NOTE.md — architecture, planning, safety, trade-offs, and future work
+PART2_SIM_TO_REAL.md — sim-to-real considerations and hardware architecture
+Validation
+
+The implementation was tested for:
+
+Normal Cartesian target execution
+PICK target execution
+PLACE target execution
+Editable PICK/PLACE mission targets
+Full pick-and-place sequence
+Workspace edge case (7.0, 3.0)
+Target projection
+Joint-limit and ground-constraint validation
+50 Hz trajectory publication
+GUI/ROS 2 operation
+Clean GUI shutdown
+
+
+If those are already present in the actual `README.md`, **don't change anything**.
+
+Now commit it:
+
+```bash
+cd ~/kineshia_ros2_arm_task
+git add README.md
+git diff --cached --check
+git commit -m "docs: finalize submission documentation"
