@@ -136,7 +136,7 @@ class GuiNode(Node):
         )
 
 
-    def start_pick_and_place(self):
+    def start_pick_and_place(self, pick_target=None, place_target=None):
         if self.sequence_state not in ("IDLE", "COMPLETE"):
             self.get_logger().warn(
                 "Pick-and-place sequence already running."
@@ -147,11 +147,22 @@ class GuiNode(Node):
         self.sequence_saw_moving = False
         self.sequence_pause_until = 0.0
 
+        # Store the targets supplied by the GUI.
+        self.sequence_pick_target = pick_target or (4.0, 2.0)
+        self.sequence_place_target = place_target or (-3.0, 3.0)
+
         self.get_logger().info(
-            "Starting pick-and-place sequence."
+            "Starting pick-and-place sequence | "
+            "PICK=(%.2f, %.2f) | PLACE=(%.2f, %.2f)"
+            % (
+                self.sequence_pick_target[0],
+                self.sequence_pick_target[1],
+                self.sequence_place_target[0],
+                self.sequence_place_target[1]
+            )
         )
 
-        self.send_target(4.0, 2.0)
+        self.send_target(*self.sequence_pick_target)
 
 
     def update_sequence(self):
@@ -164,7 +175,7 @@ class GuiNode(Node):
                     "PICK action complete. Moving to PLACE target."
                 )
 
-                self.send_target(-3.0, 3.0)
+                self.send_target(*self.sequence_place_target)
 
 
 class ArmWindow(QtWidgets.QMainWindow):
@@ -610,12 +621,18 @@ class ArmWindow(QtWidgets.QMainWindow):
         self.x_input.setDecimals(2)
         self.x_input.setSingleStep(0.1)
         self.x_input.setValue(4.0)
+        self.x_input.setKeyboardTracking(False)
+        self.x_input.setButtonSymbols(QtWidgets.QAbstractSpinBox.UpDownArrows)
+        self.x_input.setMinimumWidth(130)
 
         self.y_input = QtWidgets.QDoubleSpinBox()
         self.y_input.setRange(-10.0, 10.0)
         self.y_input.setDecimals(2)
         self.y_input.setSingleStep(0.1)
         self.y_input.setValue(2.0)
+        self.y_input.setKeyboardTracking(False)
+        self.y_input.setButtonSymbols(QtWidgets.QAbstractSpinBox.UpDownArrows)
+        self.y_input.setMinimumWidth(130)
 
         target_layout.addWidget(x_label, 0, 0)
         target_layout.addWidget(self.x_input, 0, 1)
@@ -663,25 +680,69 @@ class ArmWindow(QtWidgets.QMainWindow):
         )
         scenario_layout.setSpacing(6)
 
-        pick_button = QtWidgets.QPushButton(
-            "PICK     (4.0, 2.0)"
-        )
+        # Editable PICK target
+        pick_row = QtWidgets.QHBoxLayout()
+
+        self.pick_x_input = QtWidgets.QDoubleSpinBox()
+        self.pick_x_input.setRange(-10.0, 10.0)
+        self.pick_x_input.setDecimals(1)
+        self.pick_x_input.setSingleStep(0.1)
+        self.pick_x_input.setValue(4.0)
+        self.pick_x_input.setPrefix("X ")
+
+        self.pick_y_input = QtWidgets.QDoubleSpinBox()
+        self.pick_y_input.setRange(-10.0, 10.0)
+        self.pick_y_input.setDecimals(1)
+        self.pick_y_input.setSingleStep(0.1)
+        self.pick_y_input.setValue(2.0)
+        self.pick_y_input.setPrefix("Y ")
+
+        pick_button = QtWidgets.QPushButton("PICK")
+
+        pick_row.addWidget(pick_button)
+        pick_row.addWidget(self.pick_x_input)
+        pick_row.addWidget(self.pick_y_input)
 
         pick_button.clicked.connect(
-            lambda: self.send_target(4.0, 2.0)
+            lambda: self.send_target(
+                self.pick_x_input.value(),
+                self.pick_y_input.value()
+            )
         )
 
-        scenario_layout.addWidget(pick_button)
+        scenario_layout.addLayout(pick_row)
 
-        place_button = QtWidgets.QPushButton(
-            "PLACE   (-3.0, 3.0)"
-        )
+        # Editable PLACE target
+        place_row = QtWidgets.QHBoxLayout()
+
+        self.place_x_input = QtWidgets.QDoubleSpinBox()
+        self.place_x_input.setRange(-10.0, 10.0)
+        self.place_x_input.setDecimals(1)
+        self.place_x_input.setSingleStep(0.1)
+        self.place_x_input.setValue(-3.0)
+        self.place_x_input.setPrefix("X ")
+
+        self.place_y_input = QtWidgets.QDoubleSpinBox()
+        self.place_y_input.setRange(-10.0, 10.0)
+        self.place_y_input.setDecimals(1)
+        self.place_y_input.setSingleStep(0.1)
+        self.place_y_input.setValue(3.0)
+        self.place_y_input.setPrefix("Y ")
+
+        place_button = QtWidgets.QPushButton("PLACE")
+
+        place_row.addWidget(place_button)
+        place_row.addWidget(self.place_x_input)
+        place_row.addWidget(self.place_y_input)
 
         place_button.clicked.connect(
-            lambda: self.send_target(-3.0, 3.0)
+            lambda: self.send_target(
+                self.place_x_input.value(),
+                self.place_y_input.value()
+            )
         )
 
-        scenario_layout.addWidget(place_button)
+        scenario_layout.addLayout(place_row)
 
         edge_button = QtWidgets.QPushButton(
             "EDGE CASE     (7.0, 3.0)"
@@ -723,7 +784,7 @@ class ArmWindow(QtWidgets.QMainWindow):
         """)
 
         sequence_button.clicked.connect(
-            self.node.start_pick_and_place
+            self.start_pick_and_place
         )
 
         scenario_layout.addWidget(sequence_button)
@@ -760,6 +821,19 @@ class ArmWindow(QtWidgets.QMainWindow):
 
     def send_target(self, x, y):
         self.node.send_target(x, y)
+
+    def start_pick_and_place(self):
+        pick = (
+            self.pick_x_input.value(),
+            self.pick_y_input.value()
+        )
+
+        place = (
+            self.place_x_input.value(),
+            self.place_y_input.value()
+        )
+
+        self.node.start_pick_and_place(pick, place)
 
 
     def send_custom_target(self):

@@ -5,3 +5,5 @@ __pycache__/
 *.pyc
 *.pyo
 *.before_ui_redesign
+
+*.before_mission_edit
