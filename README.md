@@ -2,6 +2,8 @@
 
 A compact ROS 2 implementation of a 3-DoF planar robotic arm with Cartesian target control, inverse kinematics, smooth joint-space trajectory generation, safety validation, live PyQt5/PyQtGraph telemetry, and a pick-and-place demonstration.
 
+video: https://drive.google.com/file/d/1r7n4lYzV61VdGeP0ZoXH9nTk7CJUfqZ1/view?usp=drive_link
+
 ## System Overview
 
 The system contains two ROS 2 nodes:
@@ -216,6 +218,5 @@ git add README.md
 git diff --cached --check
 git commit -m "docs: finalize submission documentation"
 
-## Screen Recording
 
-[Watch the 1–3 minute demonstration] https://drive.google.com/file/d/1r7n4lYzV61VdGeP0ZoXH9nTk7CJUfqZ1/view?usp=sharing
+
