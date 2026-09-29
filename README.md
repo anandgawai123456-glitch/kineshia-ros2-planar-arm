@@ -218,4 +218,4 @@ git commit -m "docs: finalize submission documentation"
 
 ## Screen Recording
 
-[Watch the 1–3 minute demonstration](https://drive.google.com/file/d/1r7n4lYzV61VdGeP0ZoXH9nTk7CJUfqZ1/view?usp=sharing)
+[Watch the 1–3 minute demonstration] https://drive.google.com/file/d/1r7n4lYzV61VdGeP0ZoXH9nTk7CJUfqZ1/view?usp=sharing
