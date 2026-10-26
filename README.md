@@ -208,15 +208,5 @@ GUI/ROS 2 operation
 Clean GUI shutdown
 
 
-If those are already present in the actual `README.md`, **don't change anything**.
-
-Now commit it:
-
-```bash
-cd ~/kineshia_ros2_arm_task
-git add README.md
-git diff --cached --check
-git commit -m "docs: finalize submission documentation"
-
 
 
